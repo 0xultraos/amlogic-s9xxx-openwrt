@@ -8,8 +8,9 @@ Status kerja:
 - Repo sudah di-clone ke `amlogic-s9xxx-openwrt`.
 - `origin` sudah benar menunjuk ke `https://github.com/0xultraos/amlogic-s9xxx-openwrt.git`.
 - `upstream` sudah ada dan menunjuk ke `https://github.com/ophub/amlogic-s9xxx-openwrt.git`.
-- Tidak ada push ke GitHub.
-- Tidak ada firmware build panjang yang dijalankan.
+- Setelah approval user, perubahan sudah dipush ke fork `0xultraos/amlogic-s9xxx-openwrt`.
+- Kernel custom sudah dibuat di fork `0xultraos/kernel`.
+- Firmware final sudah berhasil dibuat memakai OpenWrt `25.12.4`, board `s905x`, kernel custom `6.12.92`, dan sudah di-upload ke GitHub Release.
 
 ## Ringkasan Rekomendasi
 
@@ -270,8 +271,8 @@ releases_branch: openwrt:25.12.4
 openwrt_board: s905x
 openwrt_kernel: 6.12.y
 auto_kernel: true
-kernel_repo: ophub/kernel
-kernel_usage: stable
+kernel_repo: 0xultraos/kernel
+kernel_usage: beta
 ```
 
 Ketersediaan yang sudah dicek:
@@ -285,6 +286,19 @@ Ketersediaan yang sudah dicek:
 - `ophub/kernel` tag `kernel_stable` memuat seri `6.12.x`; saat dicek, versi tertinggi yang terlihat adalah `6.12.92.tar.gz`.
 
 Catatan: `remake` dengan `auto_kernel=true` akan mencari versi terbaru dalam seri `6.12.y`, bukan memaksa angka tertentu. Jika ingin pin tepat ke satu versi, gunakan `-a false -k 6.12.xx`.
+
+Build aktual yang berhasil memakai:
+
+```text
+releases_branch: openwrt:25.12.4
+openwrt_board: s905x
+openwrt_kernel: 6.12.y
+auto_kernel: true
+kernel_repo: 0xultraos/kernel
+kernel_usage: beta
+openwrt_ip: 192.168.1.1
+builder_name: ophub
+```
 
 ## Hasil Riset Kernel 6.12 untuk Wi-Fi HG680P
 
@@ -464,7 +478,7 @@ kernel_usage   = beta
 Jika menjalankan `remake` lokal:
 
 ```sh
-sudo ./remake -b s905x -k 6.12.y -a true -r <user-or-org>/<kernel-repo> -u beta
+sudo ./remake -b s905x -k 6.12.y -a true -r 0xultraos/kernel -u beta
 ```
 
 Catatan: `remake` mengubah `-u beta` menjadi tag release `kernel_beta`.
@@ -518,6 +532,102 @@ Urutan yang paling aman:
 4. Test boot dari USB/TF terlebih dahulu sebelum install/update eMMC.
 
 Jangan memulai build firmware OpenWrt sebelum kernel `8189fs.ko` terverifikasi, karena build firmware tanpa driver ini hampir pasti tidak memenuhi target Wi-Fi auto ON.
+
+## Hasil Build Aktual
+
+Kernel custom:
+
+```text
+Repo: https://github.com/0xultraos/kernel
+Commit driver rtl8189fs: d81e221
+Commit permission workflow: f958efa
+Workflow run: https://github.com/0xultraos/kernel/actions/runs/27029907506
+Release: https://github.com/0xultraos/kernel/releases/tag/kernel_beta
+Asset: 6.12.92.tar.gz
+Asset: deb-6.12.92.tar.gz
+```
+
+Verifikasi isi archive kernel:
+
+```text
+6.12.92-beta/kernel/drivers/net/wireless/realtek/rtl8189fs/
+6.12.92-beta/kernel/drivers/net/wireless/realtek/rtl8189fs/8189fs.ko
+```
+
+Firmware OpenWrt:
+
+```text
+Workflow run: https://github.com/0xultraos/amlogic-s9xxx-openwrt/actions/runs/27033200799
+Release: https://github.com/0xultraos/amlogic-s9xxx-openwrt/releases/tag/OpenWrt_imagebuilder_openwrt_25.12.4_2026.06
+Asset: openwrt_official_amlogic_s905x_k6.12.92_2026.06.05.img.gz
+SHA256: 84552bedd6e5d40bb094c912c5f001adc8a4600933d69770c2be17461637e58d
+```
+
+Download URL:
+
+```text
+https://github.com/0xultraos/amlogic-s9xxx-openwrt/releases/download/OpenWrt_imagebuilder_openwrt_25.12.4_2026.06/openwrt_official_amlogic_s905x_k6.12.92_2026.06.05.img.gz
+```
+
+Command kernel yang berhasil:
+
+```sh
+gh workflow run compile-mainline-beta-kernel.yml --repo 0xultraos/kernel \
+  -f kernel_source=unifreq \
+  -f kernel_version=6.12.y \
+  -f kernel_auto=true \
+  -f kernel_package=all \
+  -f kernel_config=kernel-config/release/stable \
+  -f kernel_patch=kernel-patch/beta \
+  -f auto_patch=true \
+  -f kernel_toolchain=gcc \
+  -f ccache_clear=false \
+  -f docker_image=resolute
+```
+
+Command firmware yang berhasil:
+
+```sh
+gh workflow run build-openwrt-using-imagebuilder.yml --repo 0xultraos/amlogic-s9xxx-openwrt \
+  -f releases_branch='openwrt:25.12.4' \
+  -f openwrt_board=s905x \
+  -f openwrt_kernel=6.12.y \
+  -f auto_kernel=true \
+  -f kernel_repo=0xultraos/kernel \
+  -f kernel_usage=beta \
+  -f openwrt_ip=192.168.1.1 \
+  -f builder_name=ophub
+```
+
+## Perubahan File yang Dibuat
+
+Repo `0xultraos/kernel`:
+
+```text
+.github/workflows/compile-mainline-beta-kernel.yml
+.github/workflows/compile-mainline-stable-kernel.yml
+.gitignore
+kernel-config/release/stable/config-6.12
+kernel-patch/beta/linux-6.12.y/201-wifi-add-rtl8189fs-driver.patch
+```
+
+Repo `0xultraos/amlogic-s9xxx-openwrt`:
+
+```text
+.github/workflows/build-openwrt-using-imagebuilder.yml
+.github/workflows/build-openwrt-system-image.yml
+.gitignore
+BUILD_HG680P_OPENWRT25_KERNEL6.12_WIFI_ON.md
+make-openwrt/openwrt-files/different-files/s905x/rootfs/etc/config/wireless
+make-openwrt/openwrt-files/different-files/s905x/rootfs/etc/modules.d/8189fs
+make-openwrt/openwrt-files/different-files/s905x/rootfs/etc/modprobe.d/8189fs.conf
+```
+
+Peringatan:
+
+- Firmware ini sudah berhasil dibuat dan memuat kernel custom yang terbukti memiliki `8189fs.ko`.
+- Verifikasi akhir Wi-Fi auto ON tetap harus dilakukan dengan boot fisik di HG680P, karena hanya perangkat asli yang bisa membuktikan binding SDIO, regulatory, dan AP runtime benar-benar aktif pada first boot.
+- Disarankan test boot dari USB/TF lebih dulu sebelum install ke eMMC.
 
 ## File yang Perlu Diubah
 
