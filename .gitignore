@@ -5,6 +5,7 @@
 /openwrt-armsr
 /out
 /tmp
+/.kernel-check
 .DS_Store
 npm-debug.log*
 *.rej
