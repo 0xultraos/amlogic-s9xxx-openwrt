@@ -1,0 +1,28 @@
+#!/bin/sh
+
+if [ -s /etc/config/wireless ] && uci -q get wireless.radio0 >/dev/null; then
+    exit 0
+fi
+
+cat >/etc/config/wireless <<'EOF'
+config wifi-device 'radio0'
+	option type 'mac80211'
+	option path 'platform/soc/d0000000.apb/d0070000.mmc/mmc_host/mmc0/mmc0:0001/mmc0:0001:1'
+	option band '2g'
+	option channel '11'
+	option txpower '20'
+	option cell_density '0'
+	option country 'ID'
+	option htmode 'HT20'
+
+config wifi-iface 'default_radio0'
+	option device 'radio0'
+	option network 'lan'
+	option mode 'ap'
+	option ssid 'HG680P'
+	option encryption 'psk-mixed'
+	option key '1sampai10'
+EOF
+
+uci commit wireless
+exit 0
