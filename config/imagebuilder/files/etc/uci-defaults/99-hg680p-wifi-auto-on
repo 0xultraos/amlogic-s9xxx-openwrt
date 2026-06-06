@@ -1,0 +1,29 @@
+#!/bin/sh
+
+# Fix ophub packaging rewrite on OpenWrt 25 mac80211 scripts.
+if grep -q 'ipconfig phy' /lib/netifd/wireless/mac80211.sh 2>/dev/null; then
+	sed -i 's/ipconfig phy/iw phy/g' /lib/netifd/wireless/mac80211.sh
+fi
+
+cat > /etc/config/wireless <<'EOF'
+config wifi-device 'radio0'
+	option type 'mac80211'
+	option phy 'phy0'
+	option band '2g'
+	option channel '11'
+	option country 'ID'
+	option htmode 'NOHT'
+
+config wifi-iface 'default_radio0'
+	option device 'radio0'
+	option network 'lan'
+	option mode 'ap'
+	option ssid 'HG680P'
+	option encryption 'psk-mixed'
+	option key '1sampai10'
+EOF
+
+uci commit wireless
+/etc/init.d/wpad enable
+
+exit 0
